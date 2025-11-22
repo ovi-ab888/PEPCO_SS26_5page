@@ -669,7 +669,11 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
     except Exception:
         auto_pl_price = ""
 
-    pln_price_raw = st.text_input( st.text_input("Enter PLN Price", value=auto_pl_price if auto_pl_price else "", key="ui_pln_price" )("Enter PLN Price", key="ui_pln_price")
+    pln_price_raw = st.text_input(
+        "Enter PLN Price",
+        value=auto_pl_price if auto_pl_price else "",
+        key="ui_pln_price"
+    )
 
     # ----- Parse PLN Price -----
     pln_price = None
