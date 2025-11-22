@@ -320,14 +320,14 @@ def modify_collection(collection, item_class):
 
 
 def extract_colour_from_page2(text, page_number=1):
+    """Original colour-extraction logic, reused across OLD + NEW formats."""
     try:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         skip_keywords = [
-    "PURCHASE", "COLOUR", "TOTAL", "PANTONE", "SUPPLIER", "PRICE",
-    "ORDERED", "SIZES", "TPG", "TPX", "USD", "NIP", "PEPCO",
-    "Poland", "ul. Strzeszyńska 73A, 60-479 Poznań", "NIP 782-21-31-157"
-
-]
+            "PURCHASE", "COLOUR", "TOTAL", "PANTONE", "SUPPLIER", "PRICE",
+            "ORDERED", "SIZES", "TPG", "TPX", "USD", "NIP", "PEPCO",
+            "Poland", "ul. Strzeszyńska 73A, 60-479 Poznań", "NIP 782-21-31-157"
+        ]
 
         filtered = [
             line for line in lines
@@ -349,6 +349,37 @@ def extract_colour_from_page2(text, page_number=1):
     except Exception as e:
         st.error(f"Error extracting colour: {str(e)}")
         return "UNKNOWN"
+
+
+def extract_colour_from_pdf_pages(pages_text):
+    """Find the most likely colour page across ANY format and reuse page2 logic.
+
+    Works for:
+      - OLD 6-page format
+      - NEW 5-page format
+      - Future formats where colour block moves but text stays similar.
+    """
+    # 1) Prefer page containing TOTAL ORDERED QUANTITY (sizes + colour row lives here)
+    for idx, txt in enumerate(pages_text):
+        if "TOTAL ORDERED QUANTITY" in txt.upper():
+            c = extract_colour_from_page2(txt, page_number=idx+1)
+            if c and c != "UNKNOWN":
+                return c
+
+    # 2) Fallback: page with PURCHASE PRICE / Colour Pantone
+    for idx, txt in enumerate(pages_text):
+        if "PURCHASE PRICE" in txt.upper() and "COLOUR" in txt.upper():
+            c = extract_colour_from_page2(txt, page_number=idx+1)
+            if c and c != "UNKNOWN":
+                return c
+
+    # 3) Last resort: scan all pages in order
+    for idx, txt in enumerate(pages_text):
+        c = extract_colour_from_page2(txt, page_number=idx+1)
+        if c and c != "UNKNOWN":
+            return c
+
+    return "UNKNOWN"
 
 
 def extract_order_id_only(file):
@@ -375,22 +406,35 @@ def extract_order_id_only(file):
 
 
 def extract_data_from_pdf(file):
+    """Robust extractor that works for OLD 6-page + NEW 5-page formats.
+
+    Key idea: never trust fixed page numbers — always search by content.
+    """
     try:
-        doc = fitz.open(stream=file.read(), filetype="pdf")
-        if len(doc) < 3:
-            st.error("PDF must have at least 3 pages.")
+        # Read the file into memory so we can safely inspect pages
+        raw = file.read()
+        if not raw:
+            st.error("Empty PDF uploaded.")
             return None
 
-        page1 = doc[0].get_text()
+        doc = fitz.open(stream=raw, filetype="pdf")
+        if len(doc) < 1:
+            st.error("PDF must have at least 1 page.")
+            return None
 
-        # Item name English extraction
+        pages_text = [doc[i].get_text() for i in range(len(doc))]
+        full_text = "\n".join(pages_text)
+        page1 = pages_text[0]
+
+        # ---------- Item name English ----------
         item_name_en = None
-        m_item = re.search(r"Item\s*name\s*English\s*[:\.]{1,}\s*(.+)", page1, re.IGNORECASE)
+        m_item = re.search(r"Item\s*name\s*English\s*[:\.]" r"{1,}\s*(.+)", full_text, re.IGNORECASE)
         if not m_item:
-            m_item = re.search(r"Item\s*name\s*[:\.]{1,}\s*(.+?)\n", page1, re.IGNORECASE)
+            m_item = re.search(r"Item\s*name\s*[:\.]" r"{1,}\s*(.+?)\n", full_text, re.IGNORECASE)
         if m_item:
             item_name_en = m_item.group(1).strip()
 
+        # ---------- Core identifiers (still on first page in both formats) ----------
         merch_code = re.search(r"Merch\s*code\s*\.{2,}\s*([\w/]+)", page1)
         season = re.search(r"Season\s*\.{2,}\s*(\w+)?\s*(\d{2})", page1)
         style_code = re.search(r"\b\d{6}\b", page1)
@@ -426,14 +470,52 @@ def extract_data_from_pdf(file):
                     collection_value = new_collection
                     break
 
-        colour = extract_colour_from_page2(doc[1].get_text())
-        page3 = doc[2].get_text()
-        skus = re.findall(r"\b\d{8}\b", page3)
-        all_barcodes = re.findall(r"\b\d{13}\b", page3)
-        excluded = set(re.findall(r"barcode:\s*(\d{13});", page3))
+        # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
+        colour = extract_colour_from_pdf_pages(pages_text)
+
+        # ---------- SKU + Barcodes across ALL pages ----------
+        skus = []
+        all_barcodes = []
+        excluded = set()
+
+        for txt in pages_text:
+            # SKU numbers are 8-digit (e.g. 63506601)
+            skus.extend(re.findall(r"\b\d{8}\b", txt))
+            # 13-digit EAN barcodes
+            all_barcodes.extend(re.findall(r"\b\d{13}\b", txt))
+            # Exclude transport carton barcodes (label text: "barcode: 2200...")
+            excluded.update(re.findall(r"barcode:\s*(\d{13})", txt))
+
+        # Deduplicate while preserving order
+        def _dedupe(seq):
+            seen = set()
+            out = []
+            for x in seq:
+                if x not in seen:
+                    seen.add(x)
+                    out.append(x)
+            return out
+
+        skus = _dedupe(skus)
+        all_barcodes = _dedupe(all_barcodes)
+
         valid_barcodes = [b for b in all_barcodes if b not in excluded]
 
-        # ✅ Season value
+        if not skus or not valid_barcodes:
+            st.error("Could not detect SKUs or barcodes from PDF.")
+            return None
+
+        if len(valid_barcodes) != len(skus):
+            # Try to align by truncating to the shortest.
+            min_len = min(len(valid_barcodes), len(skus))
+            st.warning(
+                f"SKU ({len(skus)}) and barcode ({len(valid_barcodes)}) counts differ. "
+                f"Using first {min_len} pairs."
+            )
+            skus = skus[:min_len]
+            valid_barcodes = valid_barcodes[:min_len]
+
+        # ---------- Season value ----------
         season_value = f"{season.group(1)}{season.group(2)}" if season else "UNKNOWN"
 
         result = [({
@@ -450,7 +532,7 @@ def extract_data_from_pdf(file):
             "Batch": f"Data e prodhimit: {batch}",
             "barcode": barcode,
             "Item_name_EN": item_name_en or "",
-            "Season": season_value  # ✅ added Season field
+            "Season": season_value
         }) for sku, barcode in zip(skus, valid_barcodes)]
 
         return result
@@ -507,6 +589,7 @@ def format_product_translations(product_name, translation_row,
     return " ".join([s for s in formatted if s])
 
 # ==================== Main workflow ====================
+
 
 def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
     # ----- Load References -----
@@ -705,8 +788,8 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
                 "RSD","HUF","product_name","Dept","Season"
             ]
 
-            # 🧩 Fix: Include Cotton column if exists
-            if 'Cotton' in df.columns:
+            # 🧩 Include Cotton column if exists
+            if 'Cotton' in df.columns and 'Cotton' not in final_cols:
                 final_cols.append("Cotton")
 
             for col in final_cols:
@@ -744,6 +827,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
  
 
 # ==================== Section (Uploader + Reset) ====================
+
 
 def pepco_section():
     st.subheader("PEPCO Data Processing")
@@ -793,6 +877,7 @@ def pepco_section():
 
 # ==================== Header Render ====================
 
+
 def render_header():
     left, right = st.columns([3, 10], vertical_alignment="center")
     with left:
@@ -805,6 +890,7 @@ def render_header():
 
 
 # ==================== MAIN ====================
+
 
 def main():
     st.markdown(THEME_CSS, unsafe_allow_html=True)
@@ -822,4 +908,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
