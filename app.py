@@ -332,51 +332,32 @@ def modify_collection(collection, item_class):
 
 
 def extract_colour_from_page2(text, page_number=1):
-    """Improved colour-extraction using exact Colour + Pantone row."""
+    """Improved colour-extraction using Colour table row."""
     import re
     try:
-        # MOST ACCURATE: Detect the real colour table row
-        # Matches:
-        #   Colour ...... 
-        #   White 00-0000TPX
+        # Look for the exact 'Colour' header followed by colour + pantone
         m = re.search(
             r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
             text,
             re.IGNORECASE
         )
         if m:
-            name = m.group(1).strip().upper()
+            colour_name = m.group(1).strip().upper()
             pantone = m.group(2).strip().upper()
-            return f"{name} {pantone}"
+            return f"{colour_name} {pantone}"
 
-        # FALLBACK: Use legacy filtering
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        skip_keywords = [
-            "PURCHASE","COLOUR","TOTAL","PANTONE","SUPPLIER","PRICE",
-            "ORDERED","SIZES","TPG","TPX","USD","NIP","PEPCO",
-            "Poland","ul. Strzeszyńska 73A, 60-479 Poznań","NIP 782-21-31-157"
-        ]
-
-        filtered = [
-            line for line in lines
-            if all(k.lower() not in line.lower() for k in skip_keywords)
-            and not re.match(r"^[\d\s,./-]+$", line)
-        ]
-
-        if filtered:
-            colour = re.sub(r"[\d\.\)\(]+", "", filtered[0]).strip().upper()
-            return colour if colour else "UNKNOWN"
-
+        # If not found → no colour on this page
         return "UNKNOWN"
     except Exception:
         return "UNKNOWN"
 
 
-def extract_colour_from_pdf_pages(pages_text):
-    """Scan all pages for Colour row first, then fallback to page2 logic."""
-    import re
 
-    # First priority → exact Colour row match
+def extract_colour_from_pdf_pages(pages_text):
+    """Scan all pages for the Colour row first; no fallback to random text."""
+    import re
+    
+    # Search every page for the 'Colour' table
     for txt in pages_text:
         m = re.search(
             r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
@@ -386,13 +367,11 @@ def extract_colour_from_pdf_pages(pages_text):
         if m:
             return f"{m.group(1).strip().upper()} {m.group(2).strip().upper()}"
 
-    # Second → fallback to page2 logic per page
-    for idx, txt in enumerate(pages_text):
-        c = extract_colour_from_page2(txt, page_number=idx+1)
-        if c and c != "UNKNOWN":
-            return c
+    # If completely missing (rare) ask manual input
+    st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
+    manual = st.text_input("Colour (e.g. WHITE 00-0000TPX):", key="manual_colour_fix")
+    return manual.strip().upper() if manual else "UNKNOWN"
 
-    return "UNKNOWN"
 
 
 
@@ -926,4 +905,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
