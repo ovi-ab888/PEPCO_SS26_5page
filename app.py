@@ -354,35 +354,35 @@ def extract_colour_from_page2(text, page_number=1):
 
 
 def extract_colour_from_pdf_pages(pages_text):
-    """Fully accurate Colour + Pantone detection for all PEPCO PDFs."""
+    """Fully accurate Colour detection (Pantone removed)."""
     import re
     
     # 1) Search all pages for Colour table (most reliable)
     for txt in pages_text:
         m = re.search(
-            r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
+            r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+[0-9]{2}-[0-9]{4}[A-Za-z]*",
             txt,
             re.IGNORECASE
         )
         if m:
             name = m.group(1).strip().upper()
-            pantone = m.group(2).strip().upper()
-            return f"{name}"
+            return name   # <-- Pantone removed
 
-    # 2) Search lower-format Colour Pantone block (also accurate)
+    # 2) Search lower-format Colour block (Pantone also removed)
     for txt in pages_text:
         m2 = re.search(
-            r"Purchase price.*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
+            r"Purchase price.*?\n\s*([A-Za-z]+)\s+[0-9]{2}-[0-9]{4}[A-Za-z]*",
             txt,
             re.IGNORECASE | re.DOTALL
         )
         if m2:
-            return f"{m2.group(1).strip().upper()} {m2.group(2).strip().upper()}"
+            return m2.group(1).strip().upper()   # <-- Only colour name
 
     # 3) If not found → manual entry
     st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
-    manual = st.text_input("Colour (e.g. WHITE 00-0000TPX):", key="manual_colour_fix")
+    manual = st.text_input("Colour (e.g. WHITE):", key="manual_colour_fix")
     return manual.strip().upper() if manual else "UNKNOWN"
+
 
 
 
@@ -917,6 +917,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
