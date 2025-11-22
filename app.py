@@ -662,9 +662,8 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
         washing_code_key = st.selectbox("Select Washing Code", options=washing_options, index=washing_default_index, key="ui_wash")
 
     with c4:
-        # Auto PLN price detection
+        # Auto PLN price detection using full_pdf_text
         try:
-            full_pdf_text = "".join(pages_text)
             auto_pl_price = detect_pl_sales_price(full_pdf_text)
         except Exception:
             auto_pl_price = ""
