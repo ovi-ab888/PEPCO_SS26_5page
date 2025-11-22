@@ -332,13 +332,29 @@ def modify_collection(collection, item_class):
 
 
 def extract_colour_from_page2(text, page_number=1):
-    """Original colour-extraction logic, reused across OLD + NEW formats."""
+    """Improved colour-extraction using exact Colour + Pantone row."""
+    import re
     try:
+        # MOST ACCURATE: Detect the real colour table row
+        # Matches:
+        #   Colour ...... 
+        #   White 00-0000TPX
+        m = re.search(
+            r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
+            text,
+            re.IGNORECASE
+        )
+        if m:
+            name = m.group(1).strip().upper()
+            pantone = m.group(2).strip().upper()
+            return f"{name} {pantone}"
+
+        # FALLBACK: Use legacy filtering
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         skip_keywords = [
-            "PURCHASE", "COLOUR", "TOTAL", "PANTONE", "SUPPLIER", "PRICE",
-            "ORDERED", "SIZES", "TPG", "TPX", "USD", "NIP", "PEPCO",
-            "Poland", "ul. Strzeszyńska 73A, 60-479 Poznań", "NIP 782-21-31-157"
+            "PURCHASE","COLOUR","TOTAL","PANTONE","SUPPLIER","PRICE",
+            "ORDERED","SIZES","TPG","TPX","USD","NIP","PEPCO",
+            "Poland","ul. Strzeszyńska 73A, 60-479 Poznań","NIP 782-21-31-157"
         ]
 
         filtered = [
@@ -346,52 +362,38 @@ def extract_colour_from_page2(text, page_number=1):
             if all(k.lower() not in line.lower() for k in skip_keywords)
             and not re.match(r"^[\d\s,./-]+$", line)
         ]
-        colour = "UNKNOWN"
+
         if filtered:
-            colour = filtered[0]
-            colour = re.sub(r'[\d\.\)\(]+', '', colour).strip().upper()
-            if "MANUAL" in colour:
-                st.warning(f"⚠️ Page {page_number}: 'MANUAL' detected in colour field")
-                manual = st.text_input(f"Enter Colour (Page {page_number}):", key=f"colour_manual_{page_number}")
-                return manual.upper() if manual else "UNKNOWN"
+            colour = re.sub(r"[\d\.\)\(]+", "", filtered[0]).strip().upper()
             return colour if colour else "UNKNOWN"
-        st.warning(f"⚠️ Page {page_number}: Colour information not found in PDF")
-        manual = st.text_input(f"Enter Colour (Page {page_number}):", key=f"colour_missing_{page_number}")
-        return manual.upper() if manual else "UNKNOWN"
-    except Exception as e:
-        st.error(f"Error extracting colour: {str(e)}")
+
+        return "UNKNOWN"
+    except Exception:
         return "UNKNOWN"
 
 
 def extract_colour_from_pdf_pages(pages_text):
-    """Find the most likely colour page across ANY format and reuse page2 logic.
+    """Scan all pages for Colour row first, then fallback to page2 logic."""
+    import re
 
-    Works for:
-      - OLD 6-page format
-      - NEW 5-page format
-      - Future formats where colour block moves but text stays similar.
-    """
-    # 1) Prefer page containing TOTAL ORDERED QUANTITY (sizes + colour row lives here)
-    for idx, txt in enumerate(pages_text):
-        if "TOTAL ORDERED QUANTITY" in txt.upper():
-            c = extract_colour_from_page2(txt, page_number=idx+1)
-            if c and c != "UNKNOWN":
-                return c
+    # First priority → exact Colour row match
+    for txt in pages_text:
+        m = re.search(
+            r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
+            txt,
+            re.IGNORECASE
+        )
+        if m:
+            return f"{m.group(1).strip().upper()} {m.group(2).strip().upper()}"
 
-    # 2) Fallback: page with PURCHASE PRICE / Colour Pantone
-    for idx, txt in enumerate(pages_text):
-        if "PURCHASE PRICE" in txt.upper() and "COLOUR" in txt.upper():
-            c = extract_colour_from_page2(txt, page_number=idx+1)
-            if c and c != "UNKNOWN":
-                return c
-
-    # 3) Last resort: scan all pages in order
+    # Second → fallback to page2 logic per page
     for idx, txt in enumerate(pages_text):
         c = extract_colour_from_page2(txt, page_number=idx+1)
         if c and c != "UNKNOWN":
             return c
 
     return "UNKNOWN"
+
 
 
 def extract_order_id_only(file):
@@ -924,3 +926,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
