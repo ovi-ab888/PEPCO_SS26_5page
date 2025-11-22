@@ -675,7 +675,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
         key="ui_pln_price"
     )
 
-    # ----- Parse PLN Price -----
+# ----- Parse PLN Price -----
     pln_price = None
     if pln_price_raw.strip():
         try:
