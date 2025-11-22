@@ -367,7 +367,7 @@ def extract_colour_from_pdf_pages(pages_text):
         if m:
             name = m.group(1).strip().upper()
             pantone = m.group(2).strip().upper()
-            return f"{name} {pantone}"
+            return f"{name}"
 
     # 2) Search lower-format Colour Pantone block (also accurate)
     for txt in pages_text:
@@ -917,6 +917,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
