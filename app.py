@@ -355,32 +355,40 @@ def extract_colour_from_page2(text, page_number=1):
 
 def extract_colour_from_pdf_pages(pages_text):
     import re
-
-    # 1) Search Colour table (with NBSP fix)
+    
+    # Normalize text to remove NBSP / Unicode weird spaces
+    normalized_pages = []
     for txt in pages_text:
+        txt = txt.replace("\xa0", " ")      # NBSP → normal space
+        txt = txt.replace("\u202f", " ")    # Narrow NBSP
+        txt = re.sub(r"\s+", " ", txt)      # collapse multiple spaces
+        normalized_pages.append(txt)
+
+    # 1) Main Colour table detection
+    for txt in normalized_pages:
         m = re.search(
-            r"Colour[^\n]*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
+            r"Colour[^\n]*?\n\s*([A-Za-z ]+)\s+[0-9]{2}-[0-9]{4}",
             txt,
             re.IGNORECASE
         )
         if m:
-            name = m.group(1).strip().upper()
-            return name  # Pantone removed as per your setting
+            return m.group(1).strip().upper()
 
-    # 2) Purchase price area fallback (updated NBSP friendly)
-    for txt in pages_text:
+    # 2) Purchase price colour detection
+    for txt in normalized_pages:
         m2 = re.search(
-            r"Purchase price.*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
+            r"Purchase price.*?\n\s*([A-Za-z ]+)\s+[0-9]{2}-[0-9]{4}",
             txt,
             re.IGNORECASE | re.DOTALL
         )
         if m2:
             return m2.group(1).strip().upper()
 
-    # 3) Manual fallback
+    # 3) Fallback manual input
     st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
     manual = st.text_input("Colour (e.g. WHITE):", key="manual_colour_fix")
-    return manual.strip().upper() if manual else "UNKNOWN"
+    return manual.upper().strip() if manual else "UNKNOWN"
+
 
 
 
@@ -916,6 +924,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
