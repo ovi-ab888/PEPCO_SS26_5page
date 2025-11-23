@@ -549,27 +549,26 @@ def extract_data_from_pdf(file):
         # ---------- Season value ----------
         season_value = f"{season.group(1)}{season.group(2)}" if season else "UNKNOWN"
 
-        # ---------- Result expansion (SKU × Sizes) ----------
-result = []
-for sku, barcode, size in zip(skus, valid_barcodes, valid_sizes):
-    result.append({
-        "Order_ID": order_id.group(1).strip() if order_id else "UNKNOWN",
-        "Style": style_code.group() if style_code else "UNKNOWN",
-        "Colour": colour,
-        "Supplier_product_code": supplier_code.group(1).strip() if supplier_code else "UNKNOWN",
-        "Item_classification": item_class_value,
-        "Supplier_name": supplier_name.group(1).strip() if supplier_name else "UNKNOWN",
-        "today_date": datetime.today().strftime('%d-%m-%Y'),
-        "Collection": collection_value,
-        "Size": size,             
-        "Colour_SKU": f"{colour} • SKU {sku}",
-        "Style_Merch_Season": f"STYLE {style_code.group()} • {style_suffix} • Batch No./" if style_code else "STYLE UNKNOWN",
-        "Batch": f"Data e prodhimit: {batch}",
-        "barcode": barcode,
-        "Item_name_EN": item_name_en or "",
-        "Season": season_value
-    })
-
+              # ---------- Result expansion (SKU × Sizes) ----------
+        result = []
+        for sku, barcode, size in zip(skus, valid_barcodes, valid_sizes):
+            result.append({
+                "Order_ID": order_id.group(1).strip() if order_id else "UNKNOWN",
+                "Style": style_code.group() if style_code else "UNKNOWN",
+                "Colour": colour,
+                "Supplier_product_code": supplier_code.group(1).strip() if supplier_code else "UNKNOWN",
+                "Item_classification": item_class_value,
+                "Supplier_name": supplier_name.group(1).strip() if supplier_name else "UNKNOWN",
+                "today_date": datetime.today().strftime('%d-%m-%Y'),
+                "Collection": collection_value,
+                "Size": size,
+                "Colour_SKU": f"{colour} • SKU {sku}",
+                "Style_Merch_Season": f"STYLE {style_code.group()} • {style_suffix} • Batch No./" if style_code else "STYLE UNKNOWN",
+                "Batch": f"Data e prodhimit: {batch}",
+                "barcode": barcode,
+                "Item_name_EN": item_name_en or "",
+                "Season": season_value
+            })
 
         return result
 
@@ -949,6 +948,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
