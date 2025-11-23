@@ -332,60 +332,66 @@ def modify_collection(collection, item_class):
 
 
 def extract_colour_from_page2(text, page_number=1):
-    """Improved colour-extraction using Colour table row."""
-    import re
+    """Original colour-extraction logic, reused across OLD + NEW formats."""
     try:
-        # Look for the exact 'Colour' header followed by colour + pantone
-        m = re.search(
-            r"Colour[^\n]*?\n\s*([A-Za-z]+)\s+([0-9]{2}-[0-9]{4}[A-Za-z]*)",
-            text,
-            re.IGNORECASE
-        )
-        if m:
-            colour_name = m.group(1).strip().upper()
-            pantone = m.group(2).strip().upper()
-            return f"{colour_name} {pantone}"
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        skip_keywords = [
+            "PURCHASE", "COLOUR", "TOTAL", "PANTONE", "SUPPLIER", "PRICE",
+            "ORDERED", "SIZES", "TPG", "TPX", "USD", "NIP", "PEPCO",
+            "Poland", "ul. Strzeszyńska 73A, 60-479 Poznań", "NIP 782-21-31-157"
+        ]
 
-        # If not found → no colour on this page
+        filtered = [
+            line for line in lines
+            if all(k.lower() not in line.lower() for k in skip_keywords)
+            and not re.match(r"^[\d\s,./-]+$", line)
+        ]
+        colour = "UNKNOWN"
+        if filtered:
+            colour = filtered[0]
+            colour = re.sub(r'[\d\.\)\(]+', '', colour).strip().upper()
+            if "MANUAL" in colour:
+                st.warning(f"⚠️ Page {page_number}: 'MANUAL' detected in colour field")
+                manual = st.text_input(f"Enter Colour (Page {page_number}):", key=f"colour_manual_{page_number}")
+                return manual.upper() if manual else "UNKNOWN"
+            return colour if colour else "UNKNOWN"
+        st.warning(f"⚠️ Page {page_number}: Colour information not found in PDF")
+        manual = st.text_input(f"Enter Colour (Page {page_number}):", key=f"colour_missing_{page_number}")
+        return manual.upper() if manual else "UNKNOWN"
+    except Exception as e:
+        st.error(f"Error extracting colour: {str(e)}")
         return "UNKNOWN"
-    except Exception:
-        return "UNKNOWN"
-
 
 
 def extract_colour_from_pdf_pages(pages_text):
-    import re
+    """Find the most likely colour page across ANY format and reuse page2 logic.
 
-    # 1) Search Colour table (with NBSP fix)
-    for txt in pages_text:
-        m = re.search(
-            r"Colour[^\n]*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
-            txt,
-            re.IGNORECASE
-        )
-        if m:
-            name = m.group(1).strip().upper()
-            return name  # Pantone removed as per your setting
+    Works for:
+      - OLD 6-page format
+      - NEW 5-page format
+      - Future formats where colour block moves but text stays similar.
+    """
+    # 1) Prefer page containing TOTAL ORDERED QUANTITY (sizes + colour row lives here)
+    for idx, txt in enumerate(pages_text):
+        if "TOTAL ORDERED QUANTITY" in txt.upper():
+            c = extract_colour_from_page2(txt, page_number=idx+1)
+            if c and c != "UNKNOWN":
+                return c
 
-    # 2) Purchase price area fallback (updated NBSP friendly)
-    for txt in pages_text:
-        m2 = re.search(
-            r"Purchase price.*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
-            txt,
-            re.IGNORECASE | re.DOTALL
-        )
-        if m2:
-            return m2.group(1).strip().upper()
+    # 2) Fallback: page with PURCHASE PRICE / Colour Pantone
+    for idx, txt in enumerate(pages_text):
+        if "PURCHASE PRICE" in txt.upper() and "COLOUR" in txt.upper():
+            c = extract_colour_from_page2(txt, page_number=idx+1)
+            if c and c != "UNKNOWN":
+                return c
 
-    # 3) Manual fallback
-    st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
-    manual = st.text_input("Colour (e.g. WHITE):", key="manual_colour_fix")
-    return manual.strip().upper() if manual else "UNKNOWN"
+    # 3) Last resort: scan all pages in order
+    for idx, txt in enumerate(pages_text):
+        c = extract_colour_from_page2(txt, page_number=idx+1)
+        if c and c != "UNKNOWN":
+            return c
 
-
-
-
-
+    return "UNKNOWN"
 
 
 def extract_order_id_only(file):
@@ -478,6 +484,16 @@ def extract_data_from_pdf(file):
 
         # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
         colour = extract_colour_from_pdf_pages(pages_text)
+        # ----- Size list extraction -----
+        import re
+        size_matches = []
+        for txt in pages_text:
+            size_matches.extend(re.findall(r"\b\d+/\d+\b", txt))
+        seen = set(); sizes = []
+        for s in size_matches:
+            if s not in seen:
+                seen.add(s); sizes.append(s)
+        size_list = ", ".join(sizes)
 
         # ---------- SKU + Barcodes across ALL pages ----------
         skus = []
@@ -533,6 +549,7 @@ def extract_data_from_pdf(file):
             "Supplier_name": supplier_name.group(1).strip() if supplier_name else "UNKNOWN",
             "today_date": datetime.today().strftime('%d-%m-%Y'),
             "Collection": collection_value,
+            "Size": size_list,
             "Colour_SKU": f"{colour} • SKU {sku}",
             "Style_Merch_Season": f"STYLE {style_code.group()} • {style_suffix} • Batch No./" if style_code else "STYLE UNKNOWN",
             "Batch": f"Data e prodhimit: {batch}",
@@ -793,7 +810,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
 
             final_cols = [
                 "Order_ID","Style","Colour","Supplier_product_code","Item_classification",
-                "Supplier_name","today_date","Collection","Colour_SKU","Style_Merch_Season",
+                "Supplier_name","today_date","Collection","Size","Colour_SKU","Style_Merch_Season",
                 "Batch","barcode","washing_code","EUR","BGN","BAM","PLN","RON","CZK","MKD",
                 "RSD","HUF","product_name","Dept","Season"
             ]
@@ -918,11 +935,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
