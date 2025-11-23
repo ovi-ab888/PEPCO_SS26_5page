@@ -485,7 +485,6 @@ def extract_data_from_pdf(file):
         # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
         colour = extract_colour_from_pdf_pages(pages_text)
         # ----- Size list extraction -----
-        import re
         size_matches = []
         for txt in pages_text:
             size_matches.extend(re.findall(r"\b\d+/\d+\b", txt))
@@ -935,3 +934,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
