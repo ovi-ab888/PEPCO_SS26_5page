@@ -484,7 +484,7 @@ def extract_data_from_pdf(file):
 
         # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
         colour = extract_colour_from_pdf_pages(pages_text)
-    # ----- Size list extraction (clean + sorted) -----
+ # ----- Size list extraction (clean + sorted) -----
 size_matches = []
 valid_sizes = []
 
@@ -499,8 +499,8 @@ for txt in pages_text:
 # Remove duplicates + sort ascending
 valid_sizes = sorted(set(valid_sizes), key=lambda x: int(x.split("/")[0]))
 
-# Final size list (CSV friendly)
 size_list = ", ".join(valid_sizes)
+
 
 
 
@@ -944,6 +944,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
