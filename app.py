@@ -552,7 +552,9 @@ size_list = ", ".join(valid_sizes)
         # ---------- Season value ----------
         season_value = f"{season.group(1)}{season.group(2)}" if season else "UNKNOWN"
 
-        result = [({
+      for sku, barcode in zip(skus, valid_barcodes):
+    for size in valid_sizes:   # each row = 1 size
+        result.append({
             "Order_ID": order_id.group(1).strip() if order_id else "UNKNOWN",
             "Style": style_code.group() if style_code else "UNKNOWN",
             "Colour": colour,
@@ -561,15 +563,14 @@ size_list = ", ".join(valid_sizes)
             "Supplier_name": supplier_name.group(1).strip() if supplier_name else "UNKNOWN",
             "today_date": datetime.today().strftime('%d-%m-%Y'),
             "Collection": collection_value,
-            "Size": size_list,
+            "Size": size,   # ✔ Correct (single value)
             "Colour_SKU": f"{colour} • SKU {sku}",
             "Style_Merch_Season": f"STYLE {style_code.group()} • {style_suffix} • Batch No./" if style_code else "STYLE UNKNOWN",
             "Batch": f"Data e prodhimit: {batch}",
             "barcode": barcode,
             "Item_name_EN": item_name_en or "",
             "Season": season_value
-        }) for sku, barcode in zip(skus, valid_barcodes)]
-
+        })
         return result
     except Exception as e:
         st.error(f"PDF error: {str(e)}")
@@ -947,6 +948,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
