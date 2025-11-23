@@ -484,24 +484,24 @@ def extract_data_from_pdf(file):
 
         # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
         colour = extract_colour_from_pdf_pages(pages_text)
-     # ----- Size list extraction (clean + sorted) -----
+    # ----- Size list extraction (clean + sorted) -----
 size_matches = []
 valid_sizes = []
 
-#  Only accept real garment sizes: X/Y where X<Y and both are 1 or 2 digits
 size_pattern = re.compile(r"\b(\d{1,2})/(\d{1,2})\b")
 
 for txt in pages_text:
     for s in size_pattern.findall(txt):
         left, right = int(s[0]), int(s[1])
-        if left < right:           # e.g. 3/4 valid, but 20/11 invalid
+        if left < right:  # e.g. 3/4 valid, 20/11 invalid
             valid_sizes.append(f"{left}/{right}")
 
 # Remove duplicates + sort ascending
 valid_sizes = sorted(set(valid_sizes), key=lambda x: int(x.split("/")[0]))
 
-# Join as CSV-friendly format
+# Final size list (CSV friendly)
 size_list = ", ".join(valid_sizes)
+
 
 
         # ---------- SKU + Barcodes across ALL pages ----------
@@ -944,5 +944,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
