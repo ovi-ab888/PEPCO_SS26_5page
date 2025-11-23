@@ -484,23 +484,20 @@ def extract_data_from_pdf(file):
 
         # ---------- Colour (auto-detect page instead of hard-coded page 2) ----------
         colour = extract_colour_from_pdf_pages(pages_text)
+
         # ----- Size list extraction (clean + sorted) -----
-      # ----- Size list extraction (clean + sorted) -----
-valid_sizes = []
-size_pattern = re.compile(r"\b(\d{1,2})/(\d{1,2})\b")
+        valid_sizes = []
+        size_pattern = re.compile(r"\b(\d{1,2})/(\d{1,2})\b")
 
-for txt in pages_text:
-    for s in size_pattern.findall(txt):
-        left, right = int(s[0]), int(s[1])
-        # accept only valid sizes where left < right
-        if left < right:
-            valid_sizes.append(f"{left}/{right}")
+        for txt in pages_text:
+            for s in size_pattern.findall(txt):
+                left, right = int(s[0]), int(s[1])
+                if left < right:
+                    valid_sizes.append(f"{left}/{right}")
 
-# Remove duplicates + sort ascending
-valid_sizes = sorted(set(valid_sizes), key=lambda x: int(x.split("/")[0]))
+        valid_sizes = sorted(set(valid_sizes), key=lambda x: int(x.split("/")[0]))
+        size_list = ", ".join(valid_sizes)
 
-# For display only, comma-separated list
-size_list = ", ".join(valid_sizes)
 
 
 
@@ -948,6 +945,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
