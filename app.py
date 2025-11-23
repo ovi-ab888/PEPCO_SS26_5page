@@ -486,32 +486,31 @@ def extract_data_from_pdf(file):
         colour = extract_colour_from_pdf_pages(pages_text)
 
 
-   # ----- Size extraction (numeric + alpha) -----
-        import re
+  # ----- Size extraction (numeric + alpha) -----
+valid_sizes = []
 
-        valid_sizes = []
+# numeric 3/4, 4/5 etc
+num_pattern = re.compile(r"\b(\d{1,2})/(\d{1,2})\b")
 
-        # numeric size 3/4, 4/5 etc
-        num_pattern = re.compile(r"\b(\d{1,2})/(\d{1,2})\b")
+# alpha XS–XXXL
+alpha_pattern = re.compile(r"\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b", re.IGNORECASE)
 
-        # alpha sizes XS–XXXL
-        alpha_pattern = re.compile(r"\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b", re.IGNORECASE)
+for txt in pages_text:
 
-        for txt in pages_text:
+    # numeric sizes
+    for s in num_pattern.findall(txt):
+        left, right = int(s[0]), int(s[1])
+        if left < right:
+            valid_sizes.append(f"{left}/{right}")
 
-            # numeric sizes
-            for s in num_pattern.findall(txt):
-                left, right = int(s[0]), int(s[1])
-                if left < right:
-                    valid_sizes.append(f"{left}/{right}")
+    # alpha sizes
+    for a in alpha_pattern.findall(txt):
+        valid_sizes.append(a.upper())
 
-            # alpha sizes
-            for a in alpha_pattern.findall(txt):
-                valid_sizes.append(a.upper())
+# remove duplicates while preserving order
+seen = set()
+valid_sizes = [s for s in valid_sizes if not (s in seen or seen.add(s))]
 
-        # remove duplicates while preserving order
-        seen = set()
-        valid_sizes = [s for s in valid_sizes if not (s in seen or seen.add(s))]
 
 
 
@@ -963,6 +962,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
