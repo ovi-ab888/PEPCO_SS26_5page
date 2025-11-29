@@ -359,10 +359,10 @@ def extract_colour_from_pdf_pages(pages_text):
     
     # 1️⃣ Regex দ্বারা চেষ্টা
     for txt in pages_text:
-        m = re.search(
-            r"Colour[^\n]*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
-            txt, re.IGNORECASE
-        )
+m = re.search(
+    r"Colour.*?\n.*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4})",
+    txt, re.IGNORECASE | re.DOTALL
+)
         if m:
             return m.group(1).strip().upper()
 
@@ -931,6 +931,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
