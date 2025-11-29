@@ -1,94 +1,47 @@
-PEPCO Automation App
+# 🧾 PEPCO Automation App  
+**Automated Data Extractor for PEPCO Technical Sheets (PDF → CSV)**  
+*A complete Streamlit application developed for document automation, product data processing, and multi-language label generation.*
 
-🚀 PEPCO_SS26 Updated হলো একটি Streamlit-ভিত্তিক অটোমেশন অ্যাপ, যা PEPCO-এর ডেটা প্রসেসিং ও CSV রিপোর্ট জেনারেশনের কাজ সহজ করে।
+---
 
-✨ Features
+<p align="center">
+  <img src="logo.svg" width="380px" alt="App Logo">
+</p>
 
-📂 PDF Upload → এক বা একাধিক PEPCO Data PDF ফাইল আপলোড করা যায়
+---
 
-🏷️ Department & Product Selector → ডিপার্টমেন্ট ও প্রোডাক্ট টাইপ সিলেক্ট
+## 🚀 Overview
 
-🧵 Material Composition Auto-Logic
+PEPCO Automation App একটি শক্তিশালী Streamlit-ভিত্তিক টুল,  
+যা PEPCO-এর PDF Data Sheet থেকে প্রয়োজনীয় তথ্য **অটোমেটিকভাবে বের করে**  
+স্ট্যান্ডার্ডাইজড CSV ফাইল তৈরি করে।
 
-100% হলে আর কোনো ইনপুট বক্স আসে না
+এটি মূলত ব্যবহৃত হয়:
 
-যদি % < 100 হয় → পরবর্তী material input নিজে থেকে আসে
+- 🧾 **PDF → Structured Data Extraction**  
+- 🧵 **Material Composition Handling**  
+- 🌐 **Multi-Language Product Name Generator**  
+- 💱 **PLN Price → Multiple Currency Conversion**  
+- 📦 **SKU + Barcode Auto Mapping**  
+- 🧼 **Washing Code & Collection Mapping**  
 
-মোট composition 100% না হওয়া পর্যন্ত চলবে
+---
 
-🧼 Washing Code Mapping → সঠিক washing symbol কোড জেনারেট হয়
+## ✨ Features
 
-💰 Price Ladder → PLN প্রাইস ইনপুট দিলে অন্যান্য currency অটো-জেনারেট হয়
-
-📝 Editable Data → ফাইনাল CSV ডাউনলোড করার আগে ডেটা এডিট করা যায়
-
-🔑 Password Protection (ঐচ্ছিক)
-
-🎨 Custom UI/Theme
-
-🛠️ Installation (Local)
-
-Repo ক্লোন করো:
-
-git clone https://github.com/ovi-ab888/PEPCO_SS26_updated.git
-cd PEPCO_SS26_updated
-
-
-ভার্চুয়াল এনভ তৈরি করে active করো:
-
-python -m venv .venv
-source .venv/bin/activate   # Linux/Mac
-.venv\Scripts\activate      # Windows
-
-
-ডিপেন্ডেন্সি ইন্সটল করো:
-
-pip install -r requirements.txt
+| Category | Details |
+|---------|---------|
+| **PDF Extraction** | Auto-detect SKU, Barcode, Order ID, Colour, Batch |
+| **Multi-PDF Merge** | একাধিক PDF আপলোড → Order IDs auto-merge |
+| **Material Composition** | Dynamic rows, 100% logic, AL/MK translation |
+| **Price Ladder System** | PLN → EUR, BGN, BAM, RON, CZK, MKD, RSD, HUF |
+| **Product Translation** | ২০+ ভাষায় নাম জেনারেশন (ES + CA auto merge) |
+| **CSV Output** | PEPCO standard format filename, editor before download |
+| **Password Protection** | Secrets-based or Environment variable-based login |
+| **Smart Fallbacks** | Colour not found → User input |
 
 
-অ্যাপ চালু করো:
+---
 
-streamlit run app.py
+## 📸 Screenshots (Replace With Real Images)
 
-☁️ Deployment (Streamlit Cloud)
-
-requirements.txt (dependencies):
-
-streamlit==1.39.0
-pandas==2.2.2
-pymupdf==1.24.10
-openpyxl
-reportlab
-requests==2.32.3
-gspread
-oauth2client
-
-
-runtime.txt (Python version lock):
-
-3.12
-
-
-Secrets (Streamlit Cloud → Settings → Secrets):
-
-app_password = "YOUR_PASSWORD"
-
-📂 Project Structure
-PEPCO_SS26_updated/
-│
-├── app.py                 # Main Streamlit app
-├── auth.py                # Authentication (password check)
-├── theme.py               # Custom UI/UX
-├── logo.svg               # Logo
-├── pepco_ui_hide_github.py
-│
-├── requirements.txt       # Dependencies
-├── runtime.txt            # Python version (for Streamlit Cloud)
-├── secrets.toml           # Local secrets config
-│
-├── README.md
-└── .gitignore
-
-👨‍💻 Author
-
-Developed by Ovi AbdulOhab
