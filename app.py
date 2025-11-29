@@ -354,44 +354,57 @@ def extract_colour_from_page2(text, page_number=1):
 
 
 def extract_colour_from_pdf_pages(pages_text):
+    """
+    Ultra-robust PEPCO Colour Detection
+    Supports:
+        ✓ Old 6-page format
+        ✓ New 5-page format
+        ✓ Colour row before/after size table
+        ✓ Broken layout (Colour + sizes same row)
+        ✓ Pantone removed
+    """
     import re
-    import openai  # optional if you use API
-    
-    # 1️⃣ Regex দ্বারা চেষ্টা
-    for txt in pages_text:
-m = re.search(
-    r"Colour.*?\n.*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4})",
-    txt, re.IGNORECASE | re.DOTALL
-)
+
+    # 1️⃣ Look for standard Colour Table
+    for idx, txt in enumerate(pages_text):
+
+        # Handles both:
+        # Colour
+        # LIGHT BLUE DENIM 00-0800
+        #
+        # or
+        # Colour 3/4 4/5 5/6 ...
+        # LIGHT BLUE DENIM 00-0800
+        m = re.search(
+            r"Colour.*?\n.*?\n\s*([A-Za-z ]+)\s+[0-9]{2}-[0-9]{4}",
+            txt,
+            re.IGNORECASE | re.DOTALL
+        )
         if m:
             return m.group(1).strip().upper()
 
-    # 2️⃣ Keyword-ভিত্তিক fallback (manual heuristic)
+    # 2️⃣ Look for PURCHASE PRICE block (some files use this)
+    for idx, txt in enumerate(pages_text):
+        m2 = re.search(
+            r"Purchase price.*?\n\s*([A-Za-z ]+)\s+[0-9]{2}-[0-9]{4}",
+            txt,
+            re.IGNORECASE | re.DOTALL
+        )
+        if m2:
+            return m2.group(1).strip().upper()
+
+    # 3️⃣ Generic fallback: "colour" keyword near colour name
     for txt in pages_text:
         if "colour" in txt.lower():
-            line = next((l for l in txt.splitlines() if "colour" in l.lower()), "")
-            parts = re.findall(r"[A-Za-z]+", line)
-            if parts:
-                return parts[-1].upper()
-
-    # 3️⃣ AI-assisted fallback (optional)
-    try:
-        full_text = "\n".join(pages_text)
-        prompt = f"Extract the most probable colour name (like WHITE, NAVY, RED, PINK) from this PEPCO order text:\n\n{full_text[:2000]}"
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # small, fast model
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0
-        )
-        ai_colour = response.choices[0].message.content.strip().upper()
-        if len(ai_colour) < 20 and ai_colour.isalpha():
-            return ai_colour
-    except Exception:
-        pass
+            lines = txt.splitlines()
+            for line in lines:
+                if re.search(r"[A-Za-z ]+\s+[0-9]{2}-[0-9]{4}", line):
+                    name = line.split()[0:-1]
+                    if name:
+                        return " ".join(name).upper()
 
     # 4️⃣ Manual fallback
-    st.warning("⚠️ Colour not found — enter manually:")
+    st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
     manual = st.text_input("Colour (e.g. WHITE):", key="manual_colour_fix")
     return manual.strip().upper() if manual else "UNKNOWN"
 
@@ -931,6 +944,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
