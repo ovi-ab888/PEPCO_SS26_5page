@@ -355,30 +355,43 @@ def extract_colour_from_page2(text, page_number=1):
 
 def extract_colour_from_pdf_pages(pages_text):
     import re
-
-    # 1) Search Colour table (with NBSP fix)
+    import openai  # optional if you use API
+    
+    # 1️⃣ Regex দ্বারা চেষ্টা
     for txt in pages_text:
         m = re.search(
             r"Colour[^\n]*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
-            txt,
-            re.IGNORECASE
+            txt, re.IGNORECASE
         )
         if m:
-            name = m.group(1).strip().upper()
-            return name  # Pantone removed as per your setting
+            return m.group(1).strip().upper()
 
-    # 2) Purchase price area fallback (updated NBSP friendly)
+    # 2️⃣ Keyword-ভিত্তিক fallback (manual heuristic)
     for txt in pages_text:
-        m2 = re.search(
-            r"Purchase price.*?\n\s*([A-Za-z ]+)\s+([0-9]{2}-[0-9]{4}\s*[A-Za-z]+)",
-            txt,
-            re.IGNORECASE | re.DOTALL
-        )
-        if m2:
-            return m2.group(1).strip().upper()
+        if "colour" in txt.lower():
+            line = next((l for l in txt.splitlines() if "colour" in l.lower()), "")
+            parts = re.findall(r"[A-Za-z]+", line)
+            if parts:
+                return parts[-1].upper()
 
-    # 3) Manual fallback
-    st.warning("⚠️ Colour not found in PDF. Enter colour manually:")
+    # 3️⃣ AI-assisted fallback (optional)
+    try:
+        full_text = "\n".join(pages_text)
+        prompt = f"Extract the most probable colour name (like WHITE, NAVY, RED, PINK) from this PEPCO order text:\n\n{full_text[:2000]}"
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  # small, fast model
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0
+        )
+        ai_colour = response.choices[0].message.content.strip().upper()
+        if len(ai_colour) < 20 and ai_colour.isalpha():
+            return ai_colour
+    except Exception:
+        pass
+
+    # 4️⃣ Manual fallback
+    st.warning("⚠️ Colour not found — enter manually:")
     manual = st.text_input("Colour (e.g. WHITE):", key="manual_colour_fix")
     return manual.strip().upper() if manual else "UNKNOWN"
 
@@ -918,5 +931,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
