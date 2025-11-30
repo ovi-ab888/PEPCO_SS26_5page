@@ -24,11 +24,10 @@ import requests
 # ================================================================
 #  LOGO & THEME
 # ================================================================
-import streamlit as st
-from datetime import datetime
-import os
+LOGO_PNG = "logo.png"
+LOGO_SVG = "logo.svg"
 
-HEME_CSS = """
+THEME_CSS = """
 <style>
 :root{
   --card-bg: rgba(255,255,255,.04);
@@ -90,112 +89,6 @@ div[data-testid="stNumberInput"] input{
 }
 </style>
 """
-
-# --- Theme Setup ---
-LOGO_SVG = "logo.svg"
-st.set_page_config(page_title="PEPCO Data Processor", page_icon="🧾", layout="wide")
-
-# --- Sidebar Navigation ---
-st.sidebar.title("🧭 Workflow")
-st.sidebar.markdown("Follow the 3-step process:")
-section = st.sidebar.radio("Go to", ["1️⃣ Upload", "2️⃣ Configure", "3️⃣ Review & Export"])
-
-st.sidebar.markdown("---")
-st.sidebar.metric("Files", "3" if section != "1️⃣ Upload" else "0")
-st.sidebar.metric("Rows", "24" if section == "3️⃣ Review & Export" else "—")
-
-st.sidebar.markdown("### 💡 Tips")
-st.sidebar.info("Drag & drop multiple PDFs\nUse PLN for price ladder\nEnsure 100% composition")
-
-# --- Header ---
-col1, col2 = st.columns([8, 2])
-with col1:
-    if os.path.exists(LOGO_SVG):
-        st.image(LOGO_SVG, width=260)
-    else:
-        st.markdown("# 🧾 PEPCO Data Processor")
-    st.caption("Professional workflow • Secure • Fast")
-with col2:
-    theme = st.toggle("🌗 Dark Mode", False)
-
-# --- Section 1: Upload ---
-if section == "1️⃣ Upload":
-    st.subheader("📤 Upload PEPCO PDF")
-    st.markdown("Password-protected app — secure your files")
-
-    uploaded_files = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
-    if uploaded_files:
-        st.success(f"✅ {len(uploaded_files)} file(s) ready for processing.")
-        if st.button("➡️ Process Files"):
-            st.session_state['files_ready'] = True
-            st.session_state['next_step'] = True
-
-# --- Section 2: Configure ---
-elif section == "2️⃣ Configure":
-    st.subheader("⚙️ Configure Details")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        dept = st.selectbox("Department", ["Baby Boy", "Baby Girl", "Boys", "Girls"])
-    with c2:
-        product = st.selectbox("Product Type", ["T-shirt", "Dress", "Shorts"])
-    with c3:
-        wash = st.selectbox("Washing Code", ["1", "9", "15"])
-    with c4:
-        pln = st.text_input("Enter PLN Price")
-
-    st.markdown("### 🧵 Material Composition (% Total)")
-    materials = st.experimental_data_editor(
-        [{"Material": "Cotton", "%": 80}, {"Material": "Polyester", "%": 20}],
-        num_rows="dynamic"
-    )
-    total_pct = sum(row['%'] for row in materials if row['%'])
-
-    if total_pct == 100:
-        st.success("✅ Composition total: 100%")
-    elif total_pct > 100:
-        st.error(f"⚠️ Composition exceeds 100% ({total_pct}%)")
-    else:
-        st.warning(f"⚠️ Total is {total_pct}%, must be 100%")
-
-    st.progress(min(total_pct, 100) / 100)
-
-    st.markdown("---")
-    if st.button("➡️ Continue to Review"):
-        st.session_state['configured'] = True
-
-# --- Section 3: Review & Export ---
-elif section == "3️⃣ Review & Export":
-    st.subheader("🧾 Review and Export Data")
-
-    data = [
-        {"Order_ID": "PEP12345", "Style": "456789", "Colour": "BLUE", "Collection": "MODERN 1", "PLN": "29,99", "EUR": "6,99"},
-        {"Order_ID": "PEP12346", "Style": "456790", "Colour": "RED", "Collection": "CLASSIC 2", "PLN": "39,99", "EUR": "8,99"},
-    ]
-    st.dataframe(data, use_container_width=True)
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.download_button("📥 Download CSV", "Order_ID;Style;Colour;Collection;PLN;EUR", file_name="PEPCO_DATA.csv")
-    with col2:
-        st.button("📊 Export Excel")
-    with col3:
-        st.button("📋 Copy Filename")
-
-    st.markdown("### 🧾 Audit & Notes")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Detected SKUs", "8")
-    c2.metric("Valid Barcodes", "8")
-    c3.metric("Colour Confidence", "High")
-
-    note = st.text_input("Optional note for export (e.g., merged Order_IDs)")
-
-    if st.button("✅ Finish & Download"):
-        st.success("File exported successfully!")
-
-# --- Footer ---
-st.markdown("---")
-st.caption(f"Developed by Ovi — PEPCO Automation App © {datetime.now().year}")
-
 
 
 # ================================================================
@@ -1371,6 +1264,3 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
-
-
-
