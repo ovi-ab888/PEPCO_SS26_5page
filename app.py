@@ -24,71 +24,114 @@ import requests
 # ================================================================
 #  LOGO & THEME
 # ================================================================
-LOGO_PNG = "logo.png"
+import streamlit as st
+from datetime import datetime
+import os
+
+# --- Theme Setup ---
 LOGO_SVG = "logo.svg"
+st.set_page_config(page_title="PEPCO Data Processor", page_icon="🧾", layout="wide")
 
-THEME_CSS = """
-<style>
-:root{
-  --card-bg: rgba(255,255,255,.04);
-  --card-br: rgba(255,255,255,.12);
-  --input-bg: rgba(255,255,255,.08);
-  --input-br: rgba(255,255,255,.25);
-  --txt:      #E9ECF6;
-  --muted:    #C2C8DF;
-}
+# --- Sidebar Navigation ---
+st.sidebar.title("🧭 Workflow")
+st.sidebar.markdown("Follow the 3-step process:")
+section = st.sidebar.radio("Go to", ["1️⃣ Upload", "2️⃣ Configure", "3️⃣ Review & Export"])
 
-.block-container{max-width:1120px; padding-top:1rem; padding-bottom:3rem;}
+st.sidebar.markdown("---")
+st.sidebar.metric("Files", "3" if section != "1️⃣ Upload" else "0")
+st.sidebar.metric("Rows", "24" if section == "3️⃣ Review & Export" else "—")
 
-h1,h2,h3{font-weight:700;}
-h1{letter-spacing:.2px;} h2,h3{letter-spacing:.1px;}
+st.sidebar.markdown("### 💡 Tips")
+st.sidebar.info("Drag & drop multiple PDFs\nUse PLN for price ladder\nEnsure 100% composition")
 
-section[data-testid="stFileUploader"],
-div[data-testid="stDataFrameContainer"],
-div[data-testid="stVerticalBlock"]:has(> div[data-testid="stDataEditor"]){
-  background:var(--card-bg)!important;
-  border:1px solid var(--card-br)!important;
-  border-radius:14px!important;
-  padding:12px 14px;
-  box-shadow:0 1px 8px rgba(0,0,0,.12);
-}
+# --- Header ---
+col1, col2 = st.columns([8, 2])
+with col1:
+    if os.path.exists(LOGO_SVG):
+        st.image(LOGO_SVG, width=260)
+    else:
+        st.markdown("# 🧾 PEPCO Data Processor")
+    st.caption("Professional workflow • Secure • Fast")
+with col2:
+    theme = st.toggle("🌗 Dark Mode", False)
 
-label, .stMultiSelect label, .stSelectbox label, .stNumberInput label, .stTextInput label{
-  color:var(--txt)!important; font-weight:500;
-}
+# --- Section 1: Upload ---
+if section == "1️⃣ Upload":
+    st.subheader("📤 Upload PEPCO PDF")
+    st.markdown("Password-protected app — secure your files")
 
-input, textarea{
-  color:var(--txt)!important;
-  background:var(--input-bg)!important;
-  border-color:var(--input-br)!important;
-}
-input::placeholder, textarea::placeholder{
-  color:var(--muted)!important; opacity:.95;
-}
+    uploaded_files = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
+    if uploaded_files:
+        st.success(f"✅ {len(uploaded_files)} file(s) ready for processing.")
+        if st.button("➡️ Process Files"):
+            st.session_state['files_ready'] = True
+            st.session_state['next_step'] = True
 
-div[data-baseweb="select"] > div{
-  background:var(--input-bg)!important;
-  border-color:var(--input-br)!important;
-  border-radius:12px!important;
-}
-div[data-baseweb="select"] input{ color:var(--txt)!important; }
-div[data-baseweb="select"] svg{ opacity:.9; }
+# --- Section 2: Configure ---
+elif section == "2️⃣ Configure":
+    st.subheader("⚙️ Configure Details")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        dept = st.selectbox("Department", ["Baby Boy", "Baby Girl", "Boys", "Girls"])
+    with c2:
+        product = st.selectbox("Product Type", ["T-shirt", "Dress", "Shorts"])
+    with c3:
+        wash = st.selectbox("Washing Code", ["1", "9", "15"])
+    with c4:
+        pln = st.text_input("Enter PLN Price")
 
-div[data-testid="stNumberInput"] input{
-  color:var(--txt)!important;
-  background:var(--input-bg)!important;
-  border-color:var(--input-br)!important;
-}
+    st.markdown("### 🧵 Material Composition (% Total)")
+    materials = st.experimental_data_editor(
+        [{"Material": "Cotton", "%": 80}, {"Material": "Polyester", "%": 20}],
+        num_rows="dynamic"
+    )
+    total_pct = sum(row['%'] for row in materials if row['%'])
 
-.stButton > button{
-  border-radius:12px; padding:.55rem 1rem;
-}
+    if total_pct == 100:
+        st.success("✅ Composition total: 100%")
+    elif total_pct > 100:
+        st.error(f"⚠️ Composition exceeds 100% ({total_pct}%)")
+    else:
+        st.warning(f"⚠️ Total is {total_pct}%, must be 100%")
 
-[data-testid="stTable"] td,[data-testid="stTable"] th{
-  padding:.45rem .6rem;
-}
-</style>
-"""
+    st.progress(min(total_pct, 100) / 100)
+
+    st.markdown("---")
+    if st.button("➡️ Continue to Review"):
+        st.session_state['configured'] = True
+
+# --- Section 3: Review & Export ---
+elif section == "3️⃣ Review & Export":
+    st.subheader("🧾 Review and Export Data")
+
+    data = [
+        {"Order_ID": "PEP12345", "Style": "456789", "Colour": "BLUE", "Collection": "MODERN 1", "PLN": "29,99", "EUR": "6,99"},
+        {"Order_ID": "PEP12346", "Style": "456790", "Colour": "RED", "Collection": "CLASSIC 2", "PLN": "39,99", "EUR": "8,99"},
+    ]
+    st.dataframe(data, use_container_width=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.download_button("📥 Download CSV", "Order_ID;Style;Colour;Collection;PLN;EUR", file_name="PEPCO_DATA.csv")
+    with col2:
+        st.button("📊 Export Excel")
+    with col3:
+        st.button("📋 Copy Filename")
+
+    st.markdown("### 🧾 Audit & Notes")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Detected SKUs", "8")
+    c2.metric("Valid Barcodes", "8")
+    c3.metric("Colour Confidence", "High")
+
+    note = st.text_input("Optional note for export (e.g., merged Order_IDs)")
+
+    if st.button("✅ Finish & Download"):
+        st.success("File exported successfully!")
+
+# --- Footer ---
+st.markdown("---")
+st.caption(f"Developed by Ovi — PEPCO Automation App © {datetime.now().year}")
 
 
 # ================================================================
@@ -1264,3 +1307,4 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
+
