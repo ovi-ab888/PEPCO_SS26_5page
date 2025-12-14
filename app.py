@@ -1053,8 +1053,6 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
     #  DataFrame enrichment (Dept, Cotton, Collection, Product, Washing)
     # ============================================================
     df['Dept'] = df['Item_classification'].apply(get_dept_value)
-    
-   df_final["Item_name_English"] = df["Item_name_EN"]
 
     if cotton_value == "Y":
         df['Cotton'] = cotton_value
@@ -1093,6 +1091,8 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
                 df[cur] = currency_values.get(cur, "")
 
             df['PLN'] = format_number(pln_price, 'PLN')
+            
+            df["Item_name_English"] = df["Item_name_EN"]
 
             final_cols = [
                 "Order_ID", "Style", "Colour", "Supplier_product_code",
@@ -1266,4 +1266,5 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
+
 
