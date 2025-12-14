@@ -1118,7 +1118,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
     df['washing_code'] = WASHING_CODES[washing_code_key]
 
     # ============================================================
-    #  PRICE LADDER + CSV EXPORT
+       #  PRICE LADDER + CSV EXPORT
     # ============================================================
     if pln_price is not None:
         currency_values = find_closest_price(pln_price)
@@ -1129,8 +1129,9 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
                 df[cur] = currency_values.get(cur, "")
 
             df['PLN'] = format_number(pln_price, 'PLN')
-            
-           df["Item_name_English"] = df["Item_name_EN"].apply(clean_item_name_english)
+
+            # NEW COLUMN → Item name English (cleaned & CAPITAL)
+            df["Item_name_English"] = df["Item_name_EN"].apply(clean_item_name_english)
 
             final_cols = [
                 "Order_ID", "Style", "Colour", "Supplier_product_code",
@@ -1138,7 +1139,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
                 "Collection", "Colour_SKU", "Style_Merch_Season",
                 "Batch", "barcode", "washing_code", "EUR", "BGN",
                 "BAM", "PLN", "RON", "CZK", "MKD", "RSD", "HUF",
-                "product_name", "Dept","Item_name_English", "Season"
+                "product_name", "Dept", "Item_name_English", "Season"
             ]
 
             # Optionally include Cotton column
@@ -1304,6 +1305,7 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
+
 
 
 
