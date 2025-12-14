@@ -465,6 +465,44 @@ def modify_collection(collection, item_class):
 
     return collection
 
+# ---------- Item_name_EN ----------
+
+
+def clean_item_name_english(name: str) -> str:
+    """
+    Item_name_EN থেকে নিচের prefix গুলো বাদ দিয়ে
+    বাকি অংশ CAPITAL LETTERS এ রিটার্ন করবে।
+    """
+    if not isinstance(name, str):
+        return ""
+
+    text = name.strip()
+    lower = text.lower()
+
+    # লম্বা phrase আগে, তারপর ছোট – যেন "baby girl basic" থাকলে
+    # শুধু "baby girl" কেটে না যায়।
+    prefixes = [
+        "baby girl basic",
+        "baby boy basic",
+        "baby girl",
+        "baby boy",
+        "girl's",
+        "boy's",
+        "men's",
+        "women's",
+    ]
+
+    for p in prefixes:
+        if lower.startswith(p):
+            # prefix এর দৈর্ঘ্য অনুযায়ী কাটবো
+            cut_len = len(p)
+            text = text[cut_len:].strip(" -_,./").strip()
+            break
+
+    # সবশেষে CAPITAL
+    return text.upper()
+
+
 
 # ================================================================
 # PART 3 — PDF EXTRACTION + MATERIAL SYSTEM + TRANSLATION FORMATTER
@@ -1092,7 +1130,7 @@ def process_pepco_pdf(uploaded_pdf, extra_order_ids: str | None = None):
 
             df['PLN'] = format_number(pln_price, 'PLN')
             
-            df["Item_name_English"] = df["Item_name_EN"]
+           df["Item_name_English"] = df["Item_name_EN"].apply(clean_item_name_english)
 
             final_cols = [
                 "Order_ID", "Style", "Colour", "Supplier_product_code",
@@ -1266,5 +1304,6 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
+
 
 
