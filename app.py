@@ -422,7 +422,7 @@ def map_item_class_to_dept_label(item_class):
     if 'ladies outerwear' in ic:
         return "Women"
     if 'mens outerwear' in ic:
-        return "Men"
+        return "Mens"
 
     return None
 
@@ -1305,6 +1305,7 @@ def main():
 # ================================================================
 if __name__ == "__main__":
     main()
+
 
 
 
